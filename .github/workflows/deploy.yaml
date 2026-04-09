@@ -1,0 +1,60 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build-and-deploy:
+    runs-on: [self-hosted, gh]   # "gh" AKS nodepool via actions-runner-controller
+
+    permissions:
+      id-token: write   # required for GitHub App / OIDC token exchange
+      contents: read
+
+    env:
+      ACR_NAME: hsunacr
+      ACR_LOGIN_SERVER: hsunacr.azurecr.io
+      AKS_NAME: hsunaks
+      RESOURCE_GROUP: rg-az-deployment
+      IMAGE_TAG: ${{ github.sha }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Azure login (GitHub App)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Build and push image to ACR
+        run: |
+          az acr build \
+            --registry $ACR_NAME \
+            --image app:$IMAGE_TAG \
+            --image app:latest \
+            ./app
+
+      - name: Push Helm chart to ACR
+        run: |
+          helm package ./helm/get-acr
+          helm push get-acr-*.tgz oci://$ACR_LOGIN_SERVER/helm
+
+      - name: Set AKS context
+        uses: azure/aks-set-context@v4
+        with:
+          resource-group: ${{ env.RESOURCE_GROUP }}
+          cluster-name: ${{ env.AKS_NAME }}
+
+      - name: Deploy / upgrade Helm release
+        run: |
+          helm upgrade --install get-acr \
+            oci://$ACR_LOGIN_SERVER/helm/get-acr \
+            --namespace app \
+            --create-namespace \
+            --set image.tag=$IMAGE_TAG \
+            --set workloadIdentity.clientId=${{ secrets.APP_MI_CLIENT_ID }} \
+            --wait

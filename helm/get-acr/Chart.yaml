@@ -1,0 +1,6 @@
+apiVersion: v2
+name: get-acr
+description: Deploys app.py — an ACR repository listing service with Azure Workload Identity
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

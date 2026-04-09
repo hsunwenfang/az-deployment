@@ -1,0 +1,19 @@
+replicaCount: 1
+
+image:
+  repository: hsunacr.azurecr.io/app
+  tag: latest
+  pullPolicy: Always
+
+acrUrl: "https://hsunacr.azurecr.io"
+
+workloadIdentity:
+  # Client ID of the "app" user-assigned managed identity
+  # Set from Terraform output: app_mi_client_id
+  clientId: ""
+
+serviceAccount:
+  name: app
+  namespace: app
+
+nodepool: app
