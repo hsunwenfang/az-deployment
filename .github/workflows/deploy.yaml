@@ -6,7 +6,7 @@ on:
 
 jobs:
   build-and-deploy:
-    runs-on: [self-hosted, gh]   # "gh" AKS nodepool via actions-runner-controller
+    runs-on: gh
 
     permissions:
       id-token: write   # required for GitHub App / OIDC token exchange
